@@ -12,12 +12,19 @@ namespace Shapes
 {
     public partial class Form1 : Form
     {
+        Game game;
+
         public Form1()
         {
             InitializeComponent();
-            Game game = new Game(this);
-            game.InitGame();
+            game = new Game(this);
+            game.InitGame();       
         }
 
+        public void ButtonRightMap_Click(object sender, EventArgs e)
+        {
+            game.ButtonRightMapClicked((Button)sender);
+            
+        }
     }
 }
