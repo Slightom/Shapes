@@ -15,6 +15,9 @@ namespace Shapes
         public Form1()
         {
             InitializeComponent();
+            Game game = new Game(this);
+            game.InitGame();
         }
+
     }
 }
