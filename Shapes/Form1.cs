@@ -26,5 +26,16 @@ namespace Shapes
             game.ButtonRightMapClicked((Button)sender);
             
         }
+
+        private void BtnPlay_Click(object sender, EventArgs e)
+        {
+            game.BtnPlayClicked((Button)sender);
+        }
+
+        public void ButtonLefttMap_Click(object sender, EventArgs e)
+        {
+            game.ButtonLeftMapClicked((Button)sender);
+
+        }
     }
 }

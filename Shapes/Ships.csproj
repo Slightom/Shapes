@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{1A1AC2FE-F10E-44E3-9F2D-72B7E2F9A73A}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>Shapes</RootNamespace>
-    <AssemblyName>Shapes</AssemblyName>
+    <RootNamespace>Ships</RootNamespace>
+    <AssemblyName>Ships</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -65,6 +65,7 @@
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
     </Compile>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.1062
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shapes", "Shapes\Shapes.csproj", "{1A1AC2FE-F10E-44E3-9F2D-72B7E2F9A73A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ships", "Shapes\Ships.csproj", "{1A1AC2FE-F10E-44E3-9F2D-72B7E2F9A73A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -31,7 +31,7 @@ namespace Shapes
 
     public class ComputerPlayer : Player
     {
-        Random random;
+        public Random random;
 
         public ComputerPlayer()
         {
@@ -71,6 +71,7 @@ namespace Shapes
             {
                 do
                 {
+                    freeAvailableBoxesAround.Clear();
                     choice = random.Next(0, freeBoxes.Count() - 1);
                     choosenBox = freeBoxes.ElementAt(choice);
                     ObtainFreeAvailableBoxesAround(choosenBox.X, choosenBox.Y, ref freeAvailableBoxesAround);
@@ -94,6 +95,7 @@ namespace Shapes
             {
                 do
                 {
+                    freeAvailableBoxesAround.Clear();
                     choice = random.Next(0, freeBoxes.Count() - 1);
                     choosenBox = freeBoxes.ElementAt(choice);
                     ObtainFreeAvailableBoxesAround(choosenBox.X, choosenBox.Y, ref freeAvailableBoxesAround);
@@ -231,7 +233,7 @@ namespace Shapes
         private List<Point> neighbours;
         private int choice;
         private Point choosenBox;
-        private List<Point> OldShip;
+        private List<Point> Ship;
         private List<Point> NewShape;
 
 
@@ -255,7 +257,7 @@ namespace Shapes
             freeNeighbours = new List<Point>();
             choosenBox = new Point();
             neighbours = new List<Point>();
-            OldShip = new List<Point>();
+            Ship = new List<Point>();
 
             UserPlayer = new UserPlayer();
             ComputerPlayer = new ComputerPlayer();
@@ -271,6 +273,7 @@ namespace Shapes
                     b.Text = "";
                     b.Enabled = false;
                     b.Name = "leftMap" + i.ToString() + j.ToString();
+                    b.Click += new EventHandler(form1.ButtonLefttMap_Click);
                     this.form1.Controls.Add(b);
                     leftMap[i, j] = b;
                 }
@@ -309,172 +312,183 @@ namespace Shapes
         {
             bool shapeAlready = b.BackColor == Color.Yellow ? true : false;
             int x = 0, y = 0;
-            GetCoordinates(ref x, ref y, b);
+            GetCoordinates(ref x, ref y, b, rightMap);
             neighbours.Clear();
-            OldShip.Clear();
-            CheckNeighbours(x, y);
-            int neighboursAmount = neighbours.Count();
+            FindAllNeighbours(x, y);
 
             if (!shapeAlready)
             {
                 //sprawdz czy moze byc
-                if (boxesUsed >= 20)
+                if (boxesUsed >= 20 || neighbours.Count() > 3)
                     return;
-
-                switch (neighboursAmount)
-                {
-                    case 0:
-                        {
-                            if (UserPlayer.fleet.singles.Count() == 4)
-                                return;
-
-                            UserPlayer.fleet.singles.Add(new Point(x, y));
-                            break;
-                        }
-                    case 1:
-                        {
-                            if (UserPlayer.fleet.doubles.Count() == 3)
-                                return;
-
-                            FindOldShape(1);
-                            UserPlayer.fleet.singles.Remove(OldShip[0]);
-                            OldShip.Add(new Point(x, y));
-                            UserPlayer.fleet.doubles.Add(new List<Point>(OldShip));
-                            break;
-                        }
-                    case 2:
-                        {
-                            if (UserPlayer.fleet.triples.Count() == 2)
-                                return;
-
-                            FindOldShape(2);
-                            UserPlayer.fleet.doubles.Remove(OldShip);
-                            OldShip.Add(new Point(x, y));
-                            UserPlayer.fleet.triples.Add(new List<Point>(OldShip));
-                            break;
-                        }
-                    case 3:
-                        {
-                            if (UserPlayer.fleet.fourfold.Count() == 1)
-                                return;
-
-                            FindOldShape(3);
-                            UserPlayer.fleet.triples.Remove(OldShip);
-                            OldShip.Add(new Point(x, y));
-                            UserPlayer.fleet.fourfold.Add(new List<Point>(OldShip));
-                            break;
-                        }
-                    default:
-                        return;
-                }
-
-
+              
                 UserPlayer.OwnMap[x, y] = 1;
                 changeBackground(b, Color.Yellow);
                 ++boxesUsed;
             }
             else
             {
-                switch(neighboursAmount)
-                {
-                    case 0:
-                        {
-                            UserPlayer.fleet.singles.Remove(new Point(x, y));
-                            break;
-                        }
-                    case 1:
-                        {
-                            FindOldShape(2);
-                            UserPlayer.fleet.doubles.Remove(OldShip);
-                            break;
-                        }
-                    case 2:
-                        {
-                            FindOldShape(3);
-                            UserPlayer.fleet.triples.Remove(OldShip);
-                            break;
-                        }
-                    case 3:
-                        {
-                            FindOldShape(4);
-                            UserPlayer.fleet.fourfold.Remove(OldShip);
-                            break;
-                        }
-                }
-
                 UserPlayer.OwnMap[x, y] = 0;
                 changeBackground(b, Color.LightSkyBlue);
                 --boxesUsed;
             }
 
-            //changeBackground(b, c);
-            ////create player's map
-            //freeBoxes = new List<Point>();
-            //freeNeighbours = new List<Point>();
-            //choosenBox = new Point();
-
-            //for (int i = 0; i < 10; i++)
-            //    for (int j = 0; j < 10; j++)
-            //    {
-            //        game.UserPlayer.OwnMap[i, j] = 0;
-            //        freeBoxes.Add(new Point(i, j));
-            //    }
+            UpdateFleet();
+            UpdateLabels();
+            UpdatePictureBoxes();
+            ReadyToPlay();
         }
 
-        private void FindOldShape(int shipAmount)
+       
+
+        private void UpdateFleet()
         {
-            switch (shipAmount)
+            UserPlayer.fleet.singles.Clear();
+            UserPlayer.fleet.doubles.Clear();
+            UserPlayer.fleet.triples.Clear();
+            UserPlayer.fleet.fourfold.Clear();
+
+            for(int i=0; i<10; i++)
+                for (int j=0; j<10; j++)
+                {
+                    if(UserPlayer.OwnMap[i,j] == 1)
+                    {
+                        neighbours.Clear();
+                        Ship.Clear();
+
+                        FindWholeShip(i, j);
+                        if (!ShipAlreadyInFleet())
+                            AddShipToFleet();
+                    }
+                }
+        }
+
+        private void AddShipToFleet()
+        {
+            switch (Ship.Count())
             {
                 case 1:
                     {
-                        OldShip.Add(UserPlayer.fleet.singles.Find(x => x.X == neighbours[0].X && x.Y == neighbours[0].Y));
-                        return;
+                        UserPlayer.fleet.singles.Add(Ship[0]);
+                        break;
                     }
                 case 2:
                     {
-                        foreach (var ship in UserPlayer.fleet.doubles)
-                        {
-                            if (ship.Contains(neighbours[0]))
-                            {
-                                OldShip = ship;
-                                return;
-                            }
-                        }
+                        UserPlayer.fleet.doubles.Add(new List<Point>(Ship));
                         break;
                     }
                 case 3:
                     {
-                        foreach (var ship in UserPlayer.fleet.triples)
-                        {
-                            if (ship.Contains(neighbours[0]))
-                            {
-                                OldShip = ship;
-                                return;
-                            }
-                        }
+                        UserPlayer.fleet.triples.Add(new List<Point>(Ship));
                         break;
                     }
                 case 4:
                     {
-                        foreach (var ship in UserPlayer.fleet.fourfold)
-                        {
-                            if (ship.Contains(neighbours[0]))
-                            {
-                                OldShip = ship;
-                                return;
-                            }
-                        }
+                        UserPlayer.fleet.fourfold.Add(new List<Point>(Ship));
                         break;
                     }
             }
         }
 
+        private bool ShipAlreadyInFleet()
+        {
+            switch(Ship.Count())
+            {
+                case 1:
+                    {
+                        return UserPlayer.fleet.singles.Contains(Ship[0]);
+                    }
+                case 2:
+                    {
+                        foreach(var s in UserPlayer.fleet.doubles)
+                            if (s.All(Ship.Contains))
+                                return true;
+                        break;
+                    }
+                case 3:
+                    {
+                        foreach (var s in UserPlayer.fleet.triples)
+                            if (s.All(Ship.Contains))
+                                return true;
+                        break;
+                    }
+                case 4:
+                    {
+                        foreach (var s in UserPlayer.fleet.fourfold)
+                            if (s.All(Ship.Contains))
+                                return true;
+                        break;
+                    }
+            }
+            return false;
+        }
+
+        private void FindWholeShip(int i, int j)
+        {
+            Ship.Add(new Point(i, j));
+            FindAllNeighbours(i, j);
+            Ship.AddRange(neighbours);
+        }
+
+        private void ReadyToPlay()
+        {
+            if (UserPlayer.fleet.singles.Count() == 4 &&
+                UserPlayer.fleet.doubles.Count() == 3 &&
+                UserPlayer.fleet.triples.Count() == 2 &&
+                UserPlayer.fleet.fourfold.Count() == 1)
+            {
+                form1.Controls["panel1"].Controls["btnPlay"].Enabled = true;
+                form1.Controls["panel1"].Controls["btnPlay"].BackColor = Color.SpringGreen;
+            }
+            else
+            {
+                form1.Controls["panel1"].Controls["btnPlay"].Enabled = false;
+                form1.Controls["panel1"].Controls["btnPlay"].BackColor = SystemColors.Control;
+            }
+
+        }
+        private void UpdateLabels()
+        {
+            form1.Controls["panel1"].Controls["label1"].Text = UserPlayer.fleet.singles.Count().ToString() + "/4";
+            form1.Controls["panel1"].Controls["label2"].Text = UserPlayer.fleet.doubles.Count().ToString() + "/3";
+            form1.Controls["panel1"].Controls["label3"].Text = UserPlayer.fleet.triples.Count().ToString() + "/2";
+            form1.Controls["panel1"].Controls["label4"].Text = UserPlayer.fleet.fourfold.Count().ToString() + "/1";
+        }
+        private void UpdatePictureBoxes()
+        {
+            if(UserPlayer.fleet.singles.Count() == 4)
+                form1.Controls["panel1"].Controls["pictureBox1"].BackColor = Color.Green;     
+            else
+                form1.Controls["panel1"].Controls["pictureBox1"].BackColor = Color.Red;
+
+            if (UserPlayer.fleet.doubles.Count() == 3)
+                form1.Controls["panel1"].Controls["pictureBox2"].BackColor = Color.Green;
+            else
+                form1.Controls["panel1"].Controls["pictureBox2"].BackColor = Color.Red;
+
+            if (UserPlayer.fleet.triples.Count() == 2)
+                form1.Controls["panel1"].Controls["pictureBox3"].BackColor = Color.Green;
+            else
+                form1.Controls["panel1"].Controls["pictureBox3"].BackColor = Color.Red;
+
+            if (UserPlayer.fleet.fourfold.Count() == 1)
+                form1.Controls["panel1"].Controls["pictureBox4"].BackColor = Color.Green;
+            else
+                form1.Controls["panel1"].Controls["pictureBox4"].BackColor = Color.Red;
+        }
+
+        private void FindAllNeighbours(int x, int y)
+        {
+            CheckNeighbours(x, y);
+
+            if (neighbours.Contains(new Point(x, y)))
+                neighbours.Remove(new Point(x, y));
+        }
+
         private void CheckNeighbours(int x, int y)
         {
-            int nx, ny;
-
-            nx = x - 1;
-            ny = y;
+            int nx = x - 1;
+            int ny = y;
             if (nx >= 0 && UserPlayer.OwnMap[nx, ny] == 1 && !neighbours.Contains(new Point(nx, ny)))
             {
                 neighbours.Add(new Point(nx, ny));
@@ -506,11 +520,11 @@ namespace Shapes
             }
         }
 
-        private void GetCoordinates(ref int x, ref int y, Button b)
+        private void GetCoordinates(ref int x, ref int y, Button b, Button [,] table)
         {
             for (int i = 0; i < 10; i++)
                 for (int j = 0; j < 10; j++)
-                    if (rightMap[i, j].Name == b.Name)
+                    if (table[i, j].Name == b.Name)
                     {
                         x = i;
                         y = j;
@@ -521,6 +535,79 @@ namespace Shapes
         private void changeBackground(Button b, Color c)
         {
             b.BackColor = c;
+        }
+
+        internal void BtnPlayClicked(Button sender)
+        {
+            sender.Enabled = false;
+            sender.BackColor = SystemColors.Control;
+
+            freeBoxes.Clear();
+            for (int i = 0; i < 10; i++)
+                for (int j = 0; j < 10; j++)
+                    freeBoxes.Add(new Point(i, j));
+
+            UserMove();
+        }
+
+        private void UserMove()
+        {
+            Move = UserPlayer;
+            UnlockLeftMap();
+        }
+
+        private void UnlockLeftMap()
+        {
+            foreach (var btn in leftMap)
+                btn.Enabled = true;
+        }
+
+        internal void ButtonLeftMapClicked(Button b)
+        {
+            if (Move is ComputerPlayer)
+                return;
+
+            int x = 0, y = 0;
+            GetCoordinates(ref x, ref y, b, leftMap);
+            
+            if(ComputerPlayer.OwnMap[x,y] == 1)
+            {
+                leftMap[x, y].BackColor = Color.Red;
+            }
+            else
+            {
+                leftMap[x, y].BackColor = Color.Black;
+            }
+
+            LockLeftMap();
+
+            Move = ComputerPlayer;
+            ComputerMove();
+        }
+
+        private void ComputerMove()
+        {
+            choice = ComputerPlayer.random.Next(0, freeBoxes.Count());
+            choosenBox = freeBoxes.ElementAt(choice);
+
+            if(UserPlayer.OwnMap[choosenBox.X, choosenBox.Y] == 1)
+            {
+                rightMap[choosenBox.X, choosenBox.Y].BackColor = Color.Red;
+            }
+            else
+            {
+                rightMap[choosenBox.X, choosenBox.Y].BackColor = Color.Black;
+            }
+
+            freeBoxes.Remove(choosenBox);
+
+            UserMove();
+        }
+
+        private void LockLeftMap()
+        {
+            foreach (var btn in leftMap)
+                btn.Enabled = false;
         }
     }
 
