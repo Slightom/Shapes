@@ -25,13 +25,45 @@ namespace Shapes
     {
         public int[,] OwnMap = new int[10, 10];
         public int[,] EnemyMap = new int[10, 10];
+        public int moveCounter = 0;
+        public int hitCounter = 0;
+        public int missCounter = 0;
+        public Point? lastMove;
+        public status status;
+        public List<Point> huntCandidates;
+        
+        public List<Point> availableBoxes;
+
+        public Player()
+        {
+            lastMove = null;
+            availableBoxes = new List<Point>();
+        }
 
         public abstract void CreateShapes();
+
+        public void ClearData()
+        {
+            availableBoxes.Clear();
+            for(int i=0; i<10; i++)
+                for(int j=0; j<10; j++)
+                {
+                    //OwnMap[i, j] = 0;
+                    EnemyMap[i, j] = 0;
+                    availableBoxes.Add(new Point(i, j));
+                }
+            moveCounter = 0;
+            hitCounter = 0;
+            missCounter = 0;
+            lastMove = null;
+            
+        }
     }
 
     public class ComputerPlayer : Player
     {
         public Random random;
+        
 
         public ComputerPlayer()
         {
@@ -228,15 +260,12 @@ namespace Shapes
         private Button[,] rightMap;
         private Form1 form1;
 
+        private List<Point> neighbours;
         private List<Point> freeBoxes;
         private List<Point> freeNeighbours;
-        private List<Point> neighbours;
         private int choice;
         private Point choosenBox;
         private List<Point> Ship;
-        private List<Point> NewShape;
-
-
 
         private int boxesUsed;
 
@@ -247,7 +276,6 @@ namespace Shapes
         public Game(Form1 form)
         {
             InitComponents(form);
-
         }
 
         private void InitComponents(Form1 form)
@@ -306,6 +334,7 @@ namespace Shapes
                         leftMap[i, j].BackColor = Color.Yellow;
                 }
             UserPlayer.CreateShapes();
+            ComputerPlayer.huntCandidates = new List<Point>();
         }
 
         internal void ButtonRightMapClicked(Button b)
@@ -537,15 +566,14 @@ namespace Shapes
             b.BackColor = c;
         }
 
+
         internal void BtnPlayClicked(Button sender)
         {
             sender.Enabled = false;
             sender.BackColor = SystemColors.Control;
 
-            freeBoxes.Clear();
-            for (int i = 0; i < 10; i++)
-                for (int j = 0; j < 10; j++)
-                    freeBoxes.Add(new Point(i, j));
+            ComputerPlayer.ClearData();
+            UserPlayer.ClearData();
 
             UserMove();
         }
@@ -558,8 +586,10 @@ namespace Shapes
 
         private void UnlockLeftMap()
         {
-            foreach (var btn in leftMap)
-                btn.Enabled = true;
+            for(int i=0; i<10; i++)
+                for(int j=0; j<10; j++)
+                    if(UserPlayer.availableBoxes.Contains(new Point(i,j)))
+                        leftMap[i,j].Enabled = true;
         }
 
         internal void ButtonLeftMapClicked(Button b)
@@ -573,35 +603,128 @@ namespace Shapes
             if(ComputerPlayer.OwnMap[x,y] == 1)
             {
                 leftMap[x, y].BackColor = Color.Red;
+                UserPlayer.hitCounter++;
             }
             else
             {
                 leftMap[x, y].BackColor = Color.Black;
+                UserPlayer.missCounter++;
+                if (UserPlayer.hitCounter >= 20)
+                {
+                    MessageBox.Show("You are the winner!, :D :D :D");
+                    NewGame();
+                }
             }
 
+            UserPlayer.availableBoxes.Remove(new Point(x, y));
+            UserPlayer.lastMove = new Point(x, y);
             LockLeftMap();
+            UserPlayer.moveCounter++;
 
             Move = ComputerPlayer;
             ComputerMove();
         }
 
+        private void NewGame()
+        {
+            InitGame();
+        }
+
         private void ComputerMove()
         {
-            choice = ComputerPlayer.random.Next(0, freeBoxes.Count());
-            choosenBox = freeBoxes.ElementAt(choice);
+            if(ComputerPlayer.lastMove is null || ComputerPlayer.status == status.Missed || ComputerPlayer.status == status.HittedAndSunked)
+            {
+                choice = ComputerPlayer.random.Next(0, ComputerPlayer.availableBoxes.Count());
+                choosenBox = ComputerPlayer.availableBoxes.ElementAt(choice);
+            }
+            else
+            {
+                choice = ComputerPlayer.random.Next(0, ComputerPlayer.huntCandidates.Count());
+                choosenBox = ComputerPlayer.huntCandidates.ElementAt(choice);
+            }
+           
+            Point tmp = new Point(choosenBox.X, choosenBox.Y);
 
-            if(UserPlayer.OwnMap[choosenBox.X, choosenBox.Y] == 1)
+            if (UserPlayer.OwnMap[choosenBox.X, choosenBox.Y] == 1)
             {
                 rightMap[choosenBox.X, choosenBox.Y].BackColor = Color.Red;
+                ComputerPlayer.hitCounter++;
+                ComputerPlayer.availableBoxes.Remove(choosenBox);
+
+                UpdateComputerHuntCandidates(tmp.X, tmp.Y);
+                ComputerPlayer.huntCandidates.Remove(new Point(tmp.X, tmp.Y)); 
+                ComputerPlayer.status = IsSunked() ? status.HittedAndSunked : status.Hitted;
+                
+
+                if (ComputerPlayer.status == status.HittedAndSunked)
+                {
+                    BlockHuntCandidates();
+                    ComputerPlayer.huntCandidates.Clear();
+                    // color whole ship sth like FindWholeShip(tmp.X, tmp.Y);
+                }
+
+                if (ComputerPlayer.hitCounter >= 20)
+                {
+                    MessageBox.Show("Computer is the winner!, GAMEOVER");
+                }
             }
             else
             {
                 rightMap[choosenBox.X, choosenBox.Y].BackColor = Color.Black;
+                ComputerPlayer.missCounter++;
+                ComputerPlayer.availableBoxes.Remove(choosenBox);
+
+                if(ComputerPlayer.status == status.Hitted || ComputerPlayer.status == status.MissedHunt)
+                {
+                    ComputerPlayer.huntCandidates.Remove(new Point(tmp.X, tmp.Y));
+                    ComputerPlayer.status = status.MissedHunt;
+                }
+                else
+                {
+                    ComputerPlayer.status = status.Missed;
+                }
             }
 
-            freeBoxes.Remove(choosenBox);
+            ComputerPlayer.lastMove = new Point(tmp.X, tmp.Y);
+            ComputerPlayer.moveCounter++;
 
             UserMove();
+        }
+
+        private void BlockHuntCandidates()
+        {
+            foreach (var b in ComputerPlayer.huntCandidates)
+                ComputerPlayer.availableBoxes.Remove(new Point(b.X, b.Y));
+        }
+
+        private bool IsSunked()
+        {
+            foreach (var s in ComputerPlayer.huntCandidates)
+                if (UserPlayer.OwnMap[s.X, s.Y] == 1)
+                    return false;
+            return true;
+        }
+
+        private void UpdateComputerHuntCandidates(int px, int py)
+        {
+            int x = px - 1;
+            int y = py;
+            if (x >=0 && ComputerPlayer.availableBoxes.Contains(new Point(x, y)) && !ComputerPlayer.huntCandidates.Contains(new Point(x, y)))
+                ComputerPlayer.huntCandidates.Add(new Point(x, y));
+
+            x = px + 1;
+            if (x <= 9 && ComputerPlayer.availableBoxes.Contains(new Point(x, y)) && !ComputerPlayer.huntCandidates.Contains(new Point(x, y)))
+                ComputerPlayer.huntCandidates.Add(new Point(x, y));
+
+            x = px;
+            y = py - 1;
+            if (y >= 0 && ComputerPlayer.availableBoxes.Contains(new Point(x, y)) && !ComputerPlayer.huntCandidates.Contains(new Point(x, y)))
+                ComputerPlayer.huntCandidates.Add(new Point(x, y));
+
+
+            y = py + 1;
+            if (y <= 9 && ComputerPlayer.availableBoxes.Contains(new Point(x, y)) && !ComputerPlayer.huntCandidates.Contains(new Point(x, y)))
+                ComputerPlayer.huntCandidates.Add(new Point(x, y));
         }
 
         private void LockLeftMap()
@@ -626,6 +749,14 @@ namespace Shapes
             this.fourfold = new List<List<Point>>();
         }
 
+    }
+
+    public enum status
+    {
+        Missed,
+        Hitted,
+        MissedHunt,
+        HittedAndSunked
     }
 }
 
