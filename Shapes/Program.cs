@@ -31,13 +31,13 @@ namespace Shapes
         public Point? lastMove;
         public status status;
         public List<Point> huntCandidates;
-        
         public List<Point> availableBoxes;
 
         public Player()
         {
             lastMove = null;
             availableBoxes = new List<Point>();
+            huntCandidates = new List<Point>();
         }
 
         public abstract void CreateShapes();
@@ -45,10 +45,12 @@ namespace Shapes
         public void ClearData()
         {
             availableBoxes.Clear();
-            for(int i=0; i<10; i++)
-                for(int j=0; j<10; j++)
+            huntCandidates.Clear();
+            
+            for (int i = 0; i < 10; i++)
+                for (int j = 0; j < 10; j++)
                 {
-                    //OwnMap[i, j] = 0;
+                    OwnMap[i, j] = 0;
                     EnemyMap[i, j] = 0;
                     availableBoxes.Add(new Point(i, j));
                 }
@@ -56,14 +58,13 @@ namespace Shapes
             hitCounter = 0;
             missCounter = 0;
             lastMove = null;
-            
         }
     }
 
     public class ComputerPlayer : Player
     {
         public Random random;
-        
+
 
         public ComputerPlayer()
         {
@@ -209,7 +210,7 @@ namespace Shapes
 
             x = choosenBox.X - 1;
             y = choosenBox.Y;
-            if (x >= 0 && freeBoxes.Exists(fb => fb.X == x && fb.Y == y) && !freeNeighbours.Contains(new Point(x,y)))
+            if (x >= 0 && freeBoxes.Exists(fb => fb.X == x && fb.Y == y) && !freeNeighbours.Contains(new Point(x, y)))
                 freeNeighbours.Add(new Point(x, y));
 
             x = choosenBox.X + 1;
@@ -247,7 +248,16 @@ namespace Shapes
         {
 
         }
+
+        public void ClearFleet()
+        {
+            fleet.singles.Clear();
+            fleet.doubles.Clear();
+            fleet.triples.Clear();
+            fleet.fourfold.Clear();
+        }
     }
+
 
     public class Game
     {
@@ -268,6 +278,14 @@ namespace Shapes
         private List<Point> Ship;
 
         private int boxesUsed;
+
+        public static string hittedSign = "X";
+        public static string missedSign = "•";
+        public static Color hittedSunkenColor = Color.Red;
+        public static Color playerShipColor = Color.Yellow;
+        public static Color emptyColor = SystemColors.Control;
+        public static Color borderColor = Color.Blue;
+
 
         public Game()
         {
@@ -299,9 +317,11 @@ namespace Shapes
                     b.Location = new Point(94 + i * (32), 328 + j * (32));
                     b.Size = new Size(32, 32);
                     b.Text = "";
+                    b.Font = new Font("Microsoft Sans Serif", 14, FontStyle.Bold);
                     b.Enabled = false;
                     b.Name = "leftMap" + i.ToString() + j.ToString();
                     b.Click += new EventHandler(form1.ButtonLefttMap_Click);
+                    //b.FlatStyle = FlatStyle.Flat;
                     this.form1.Controls.Add(b);
                     leftMap[i, j] = b;
                 }
@@ -314,51 +334,72 @@ namespace Shapes
                     b.Location = new Point(500 + i * (32), 328 + j * (32));
                     b.Size = new Size(32, 32);
                     b.Text = "";
-                    b.BackColor = Color.LightSkyBlue;
+                    b.Font = new Font("Microsoft Sans Serif", 14, FontStyle.Bold);
+                    b.BackColor = emptyColor;
                     b.Name = "righttMap" + i.ToString() + j.ToString();
                     b.Click += new EventHandler(form1.ButtonRightMap_Click);
+                    //b.FlatStyle = FlatStyle.Flat;
                     this.form1.Controls.Add(b);
                     rightMap[i, j] = b;
                 }
-
-            boxesUsed = 0;
         }
 
         internal void InitGame()
         {
-            ComputerPlayer.CreateShapes();
-            for(int i=0; i<10; i++)
-                for(int j=0; j<10; j++)
+            ComputerPlayer.ClearData();
+            UserPlayer.ClearData();
+            UserPlayer.ClearFleet();
+
+            for (int i = 0; i < 10; i++)
+                for (int j = 0; j < 10; j++)
                 {
-                    if (ComputerPlayer.OwnMap[i, j] == 1)
-                        leftMap[i, j].BackColor = Color.Yellow;
+                    leftMap[i, j].BackColor = emptyColor;
+                    leftMap[i, j].Enabled = false;
+                    leftMap[i, j].Text = "";
+                    rightMap[i, j].BackColor = emptyColor;
+                    rightMap[i, j].Enabled = true;
+                    rightMap[i, j].Text = "";
                 }
-            UserPlayer.CreateShapes();
-            ComputerPlayer.huntCandidates = new List<Point>();
+
+            ComputerPlayer.CreateShapes();
+
+            form1.Controls["panel1"].Visible = true;
+
+            for (int i = 0; i < 10; i++)
+                for (int j = 0; j < 10; j++)
+                {
+                    //if (ComputerPlayer.OwnMap[i, j] == 1)
+                        //leftMap[i, j].BackColor = playerShipColor;
+                }
+
+            UnlockMap(rightMap);
+            boxesUsed = 0;
         }
 
+
+        #region tworzenie statków gracza
         internal void ButtonRightMapClicked(Button b)
         {
-            bool shapeAlready = b.BackColor == Color.Yellow ? true : false;
+            bool shapeAlready = b.BackColor == playerShipColor ? true : false;
             int x = 0, y = 0;
             GetCoordinates(ref x, ref y, b, rightMap);
             neighbours.Clear();
-            FindAllNeighbours(x, y);
+            FindAllNeighbours(x, y, UserPlayer.OwnMap);
 
             if (!shapeAlready)
             {
                 //sprawdz czy moze byc
                 if (boxesUsed >= 20 || neighbours.Count() > 3)
                     return;
-              
+
                 UserPlayer.OwnMap[x, y] = 1;
-                changeBackground(b, Color.Yellow);
+                changeBackground(b, playerShipColor);
                 ++boxesUsed;
             }
             else
             {
                 UserPlayer.OwnMap[x, y] = 0;
-                changeBackground(b, Color.LightSkyBlue);
+                changeBackground(b, emptyColor);
                 --boxesUsed;
             }
 
@@ -368,8 +409,6 @@ namespace Shapes
             ReadyToPlay();
         }
 
-       
-
         private void UpdateFleet()
         {
             UserPlayer.fleet.singles.Clear();
@@ -377,15 +416,12 @@ namespace Shapes
             UserPlayer.fleet.triples.Clear();
             UserPlayer.fleet.fourfold.Clear();
 
-            for(int i=0; i<10; i++)
-                for (int j=0; j<10; j++)
+            for (int i = 0; i < 10; i++)
+                for (int j = 0; j < 10; j++)
                 {
-                    if(UserPlayer.OwnMap[i,j] == 1)
+                    if (UserPlayer.OwnMap[i, j] == 1)
                     {
-                        neighbours.Clear();
-                        Ship.Clear();
-
-                        FindWholeShip(i, j);
+                        FindWholeShip(i, j, UserPlayer.OwnMap);
                         if (!ShipAlreadyInFleet())
                             AddShipToFleet();
                     }
@@ -421,7 +457,7 @@ namespace Shapes
 
         private bool ShipAlreadyInFleet()
         {
-            switch(Ship.Count())
+            switch (Ship.Count())
             {
                 case 1:
                     {
@@ -429,7 +465,7 @@ namespace Shapes
                     }
                 case 2:
                     {
-                        foreach(var s in UserPlayer.fleet.doubles)
+                        foreach (var s in UserPlayer.fleet.doubles)
                             if (s.All(Ship.Contains))
                                 return true;
                         break;
@@ -452,10 +488,12 @@ namespace Shapes
             return false;
         }
 
-        private void FindWholeShip(int i, int j)
+        private void FindWholeShip(int i, int j, int[,] map)
         {
+            Ship.Clear();
+            neighbours.Clear();
             Ship.Add(new Point(i, j));
-            FindAllNeighbours(i, j);
+            FindAllNeighbours(i, j, map);
             Ship.AddRange(neighbours);
         }
 
@@ -472,7 +510,7 @@ namespace Shapes
             else
             {
                 form1.Controls["panel1"].Controls["btnPlay"].Enabled = false;
-                form1.Controls["panel1"].Controls["btnPlay"].BackColor = SystemColors.Control;
+                form1.Controls["panel1"].Controls["btnPlay"].BackColor = emptyColor;
             }
 
         }
@@ -485,8 +523,8 @@ namespace Shapes
         }
         private void UpdatePictureBoxes()
         {
-            if(UserPlayer.fleet.singles.Count() == 4)
-                form1.Controls["panel1"].Controls["pictureBox1"].BackColor = Color.Green;     
+            if (UserPlayer.fleet.singles.Count() == 4)
+                form1.Controls["panel1"].Controls["pictureBox1"].BackColor = Color.Green;
             else
                 form1.Controls["panel1"].Controls["pictureBox1"].BackColor = Color.Red;
 
@@ -506,50 +544,52 @@ namespace Shapes
                 form1.Controls["panel1"].Controls["pictureBox4"].BackColor = Color.Red;
         }
 
-        private void FindAllNeighbours(int x, int y)
+        private void FindAllNeighbours(int x, int y, int[,] map)
         {
-            CheckNeighbours(x, y);
+            CheckNeighbours(x, y, map);
 
             if (neighbours.Contains(new Point(x, y)))
                 neighbours.Remove(new Point(x, y));
         }
 
-        private void CheckNeighbours(int x, int y)
+        private void CheckNeighbours(int x, int y, int[,] map)
         {
             int nx = x - 1;
             int ny = y;
-            if (nx >= 0 && UserPlayer.OwnMap[nx, ny] == 1 && !neighbours.Contains(new Point(nx, ny)))
+            if (nx >= 0 && map[nx, ny] == 1 && !neighbours.Contains(new Point(nx, ny)))
             {
                 neighbours.Add(new Point(nx, ny));
-                CheckNeighbours(nx, ny);
+                CheckNeighbours(nx, ny, map);
             }
 
             nx = x + 1;
             ny = y;
-            if (nx <= 9 && UserPlayer.OwnMap[nx, ny] == 1 && !neighbours.Contains(new Point(nx, ny)))
+            if (nx <= 9 && map[nx, ny] == 1 && !neighbours.Contains(new Point(nx, ny)))
             {
                 neighbours.Add(new Point(nx, ny));
-                CheckNeighbours(nx, ny);
+                CheckNeighbours(nx, ny, map);
             }
 
             nx = x;
             ny = y - 1;
-            if (ny >= 0 && UserPlayer.OwnMap[nx, ny] == 1 && !neighbours.Contains(new Point(nx, ny)))
+            if (ny >= 0 && map[nx, ny] == 1 && !neighbours.Contains(new Point(nx, ny)))
             {
                 neighbours.Add(new Point(nx, ny));
-                CheckNeighbours(nx, ny);
+                CheckNeighbours(nx, ny, map);
             }
 
             nx = x;
             ny = y + 1;
-            if (ny <= 9 && UserPlayer.OwnMap[nx, ny] == 1 && !neighbours.Contains(new Point(nx, ny)))
+            if (ny <= 9 && map[nx, ny] == 1 && !neighbours.Contains(new Point(nx, ny)))
             {
                 neighbours.Add(new Point(nx, ny));
-                CheckNeighbours(nx, ny);
+                CheckNeighbours(nx, ny, map);
             }
         }
+        #endregion
 
-        private void GetCoordinates(ref int x, ref int y, Button b, Button [,] table)
+
+        private void GetCoordinates(ref int x, ref int y, Button b, Button[,] table)
         {
             for (int i = 0; i < 10; i++)
                 for (int j = 0; j < 10; j++)
@@ -569,12 +609,14 @@ namespace Shapes
 
         internal void BtnPlayClicked(Button sender)
         {
+            form1.Controls["panel1"].Visible = false;
+            form1.Controls["panel2"].Visible = true;
             sender.Enabled = false;
-            sender.BackColor = SystemColors.Control;
+            sender.BackColor = emptyColor;
 
-            ComputerPlayer.ClearData();
-            UserPlayer.ClearData();
-
+            //ComputerPlayer.ClearData();
+            //UserPlayer.ClearData();
+            LockMap(rightMap);
             UserMove();
         }
 
@@ -584,12 +626,17 @@ namespace Shapes
             UnlockLeftMap();
         }
 
+        public void UnlockMap(Button[,] map)
+        {
+            foreach (var btn in map)
+                btn.Enabled = true;
+        }
         private void UnlockLeftMap()
         {
-            for(int i=0; i<10; i++)
-                for(int j=0; j<10; j++)
-                    if(UserPlayer.availableBoxes.Contains(new Point(i,j)))
-                        leftMap[i,j].Enabled = true;
+            for (int i = 0; i < 10; i++)
+                for (int j = 0; j < 10; j++)
+                    if (UserPlayer.availableBoxes.Contains(new Point(i, j)))
+                        leftMap[i, j].Enabled = true;
         }
 
         internal void ButtonLeftMapClicked(Button b)
@@ -599,40 +646,102 @@ namespace Shapes
 
             int x = 0, y = 0;
             GetCoordinates(ref x, ref y, b, leftMap);
-            
-            if(ComputerPlayer.OwnMap[x,y] == 1)
+
+            UpdateGhostBorder(leftMap, UserPlayer.lastMove, new Point(x, y));
+
+            if (leftMap[x, y].Text != "")
+                return;
+
+            if (ComputerPlayer.OwnMap[x, y] == 1)
             {
-                leftMap[x, y].BackColor = Color.Red;
+                leftMap[x, y].Text = hittedSign;
                 UserPlayer.hitCounter++;
+
+                if (IsSunken(x, y, ComputerPlayer.OwnMap))
+                {
+                    ColorShip(hittedSunkenColor, leftMap);
+                    ClearShip();
+                }
+
+                if (UserPlayer.hitCounter >= 20)
+                {
+                    UpdateUserScore();
+                    GameOver();
+                    return;
+                }
             }
             else
             {
-                leftMap[x, y].BackColor = Color.Black;
+                leftMap[x, y].Text = missedSign;
                 UserPlayer.missCounter++;
-                if (UserPlayer.hitCounter >= 20)
-                {
-                    MessageBox.Show("You are the winner!, :D :D :D");
-                    NewGame();
-                }
+
             }
+
+            
 
             UserPlayer.availableBoxes.Remove(new Point(x, y));
             UserPlayer.lastMove = new Point(x, y);
-            LockLeftMap();
+            //LockLeftMap();
             UserPlayer.moveCounter++;
+
+            UpdateUserScore();
+
+
 
             Move = ComputerPlayer;
             ComputerMove();
         }
 
+        private void UpdateGhostBorder(Button[,] map, Point? lastMove, Point point)
+        {
+            map[point.X, point.Y].FlatAppearance.BorderColor = borderColor;
+
+
+            if (lastMove != null)
+            {
+                Point last = (Point)lastMove;
+                map[last.X, last.Y].FlatAppearance.BorderColor = emptyColor;
+                //map[last.X, last.Y].PerformClick();
+            }
+        }
+
+        private bool IsSunken(int x, int y, int[,] ownMap)
+        {
+            FindWholeShip(x, y, ComputerPlayer.OwnMap);
+            foreach (var b in Ship)
+                if (leftMap[b.X, b.Y].Text == missedSign || leftMap[b.X, b.Y].Text == "")
+                    return false;
+
+            return true;
+        }
+
+        private void UpdateUserScore()
+        {
+            form1.Controls["panel2"].Controls["luhit"].Text = UserPlayer.hitCounter + "/20";
+        }
+
         private void NewGame()
         {
+            form1.Controls["panel1"].Visible = true;
+            form1.Controls["panel2"].Visible = false;
+            ClearPanels12();
+
             InitGame();
+        }
+
+        private void ClearPanels12()
+        {
+            form1.Controls["panel2"].Controls["luhit"].Text =  "0/20";
+            form1.Controls["panel2"].Controls["lchit"].Text =  "0/20";
+
+            UserPlayer.ClearFleet();
+            UpdateLabels();
+            UpdatePictureBoxes();
         }
 
         private void ComputerMove()
         {
-            if(ComputerPlayer.lastMove is null || ComputerPlayer.status == status.Missed || ComputerPlayer.status == status.HittedAndSunked)
+            if (ComputerPlayer.lastMove is null || ComputerPlayer.status == status.Missed || ComputerPlayer.status == status.HittedAndSunked)
             {
                 choice = ComputerPlayer.random.Next(0, ComputerPlayer.availableBoxes.Count());
                 choosenBox = ComputerPlayer.availableBoxes.ElementAt(choice);
@@ -642,39 +751,47 @@ namespace Shapes
                 choice = ComputerPlayer.random.Next(0, ComputerPlayer.huntCandidates.Count());
                 choosenBox = ComputerPlayer.huntCandidates.ElementAt(choice);
             }
-           
+
             Point tmp = new Point(choosenBox.X, choosenBox.Y);
+
+            UpdateGhostBorder(rightMap, ComputerPlayer.lastMove, tmp);
 
             if (UserPlayer.OwnMap[choosenBox.X, choosenBox.Y] == 1)
             {
-                rightMap[choosenBox.X, choosenBox.Y].BackColor = Color.Red;
-                ComputerPlayer.hitCounter++;
+                rightMap[choosenBox.X, choosenBox.Y].Text = hittedSign;
+                ++ComputerPlayer.hitCounter;
                 ComputerPlayer.availableBoxes.Remove(choosenBox);
 
                 UpdateComputerHuntCandidates(tmp.X, tmp.Y);
-                ComputerPlayer.huntCandidates.Remove(new Point(tmp.X, tmp.Y)); 
+                ComputerPlayer.huntCandidates.Remove(new Point(tmp.X, tmp.Y));
                 ComputerPlayer.status = IsSunked() ? status.HittedAndSunked : status.Hitted;
-                
+
 
                 if (ComputerPlayer.status == status.HittedAndSunked)
                 {
                     BlockHuntCandidates();
+                    ClearShip();
                     ComputerPlayer.huntCandidates.Clear();
                     // color whole ship sth like FindWholeShip(tmp.X, tmp.Y);
+                    FindWholeShip(tmp.X, tmp.Y, UserPlayer.OwnMap);
+                    ColorShip(hittedSunkenColor, rightMap);
+                    ClearShip();
                 }
 
                 if (ComputerPlayer.hitCounter >= 20)
                 {
-                    MessageBox.Show("Computer is the winner!, GAMEOVER");
+                    UpdateComputerScore();
+                    GameOver();
+                    return;
                 }
             }
             else
             {
-                rightMap[choosenBox.X, choosenBox.Y].BackColor = Color.Black;
+                rightMap[choosenBox.X, choosenBox.Y].Text = missedSign;
                 ComputerPlayer.missCounter++;
                 ComputerPlayer.availableBoxes.Remove(choosenBox);
 
-                if(ComputerPlayer.status == status.Hitted || ComputerPlayer.status == status.MissedHunt)
+                if (ComputerPlayer.status == status.Hitted || ComputerPlayer.status == status.MissedHunt)
                 {
                     ComputerPlayer.huntCandidates.Remove(new Point(tmp.X, tmp.Y));
                     ComputerPlayer.status = status.MissedHunt;
@@ -688,7 +805,47 @@ namespace Shapes
             ComputerPlayer.lastMove = new Point(tmp.X, tmp.Y);
             ComputerPlayer.moveCounter++;
 
+            UpdateComputerScore();
             UserMove();
+        }
+
+        private void ClearShip()
+        {
+            Ship.Clear();
+            neighbours.Clear();
+        }
+
+        private void ColorShip(Color color, Button[,] map)
+        {
+            foreach (var b in Ship)
+            {
+                map[b.X, b.Y].BackColor = color;
+            }
+        }
+
+        private void GameOver()
+        {
+            string msg = "";
+            string title = "";
+
+            if (ComputerPlayer.hitCounter >= 20)
+            {
+                msg = "Computer is the winner :( Try again";
+                title = "GAMEOVER";
+            }
+            else
+            {
+                msg = "You are the winner!!! :D";
+                title = "VICTORY";
+            }
+            MessageBox.Show(msg, title);
+
+            NewGame();
+        }
+
+        private void UpdateComputerScore()
+        {
+            form1.Controls["panel2"].Controls["lchit"].Text = ComputerPlayer.hitCounter + "/20";
         }
 
         private void BlockHuntCandidates()
@@ -709,7 +866,7 @@ namespace Shapes
         {
             int x = px - 1;
             int y = py;
-            if (x >=0 && ComputerPlayer.availableBoxes.Contains(new Point(x, y)) && !ComputerPlayer.huntCandidates.Contains(new Point(x, y)))
+            if (x >= 0 && ComputerPlayer.availableBoxes.Contains(new Point(x, y)) && !ComputerPlayer.huntCandidates.Contains(new Point(x, y)))
                 ComputerPlayer.huntCandidates.Add(new Point(x, y));
 
             x = px + 1;
@@ -727,9 +884,9 @@ namespace Shapes
                 ComputerPlayer.huntCandidates.Add(new Point(x, y));
         }
 
-        private void LockLeftMap()
+        private void LockMap(Button[,] map)
         {
-            foreach (var btn in leftMap)
+            foreach (var btn in map)
                 btn.Enabled = false;
         }
     }
@@ -758,5 +915,6 @@ namespace Shapes
         MissedHunt,
         HittedAndSunked
     }
+
 }
 
