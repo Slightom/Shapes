@@ -46,7 +46,7 @@ namespace Shapes
         {
             availableBoxes.Clear();
             huntCandidates.Clear();
-            
+
             for (int i = 0; i < 10; i++)
                 for (int j = 0; j < 10; j++)
                 {
@@ -284,7 +284,8 @@ namespace Shapes
         public static Color hittedSunkenColor = Color.Red;
         public static Color playerShipColor = Color.Yellow;
         public static Color emptyColor = SystemColors.Control;
-        public static Color borderColor = Color.Blue;
+        public static Color borderLastMoveColor = Color.Blue;
+        public static Color borderNormalColor = Color.Black;
 
 
         public Game()
@@ -314,14 +315,16 @@ namespace Shapes
                 for (int j = 0; j < 10; j++)
                 {
                     b = new Button();
-                    b.Location = new Point(94 + i * (32), 328 + j * (32));
+                    b.Location = new Point(94 + i * (33), 328 + j * (33));
                     b.Size = new Size(32, 32);
                     b.Text = "";
                     b.Font = new Font("Microsoft Sans Serif", 14, FontStyle.Bold);
                     b.Enabled = false;
                     b.Name = "leftMap" + i.ToString() + j.ToString();
                     b.Click += new EventHandler(form1.ButtonLefttMap_Click);
-                    //b.FlatStyle = FlatStyle.Flat;
+                    b.FlatStyle = FlatStyle.Flat;
+                    b.FlatAppearance.BorderSize = 1;
+                    b.TabStop = false;
                     this.form1.Controls.Add(b);
                     leftMap[i, j] = b;
                 }
@@ -331,14 +334,16 @@ namespace Shapes
                 for (int j = 0; j < 10; j++)
                 {
                     b = new Button();
-                    b.Location = new Point(500 + i * (32), 328 + j * (32));
+                    b.Location = new Point(500 + i * (33), 328 + j * (33));
                     b.Size = new Size(32, 32);
                     b.Text = "";
                     b.Font = new Font("Microsoft Sans Serif", 14, FontStyle.Bold);
                     b.BackColor = emptyColor;
                     b.Name = "righttMap" + i.ToString() + j.ToString();
                     b.Click += new EventHandler(form1.ButtonRightMap_Click);
-                    //b.FlatStyle = FlatStyle.Flat;
+                    b.FlatStyle = FlatStyle.Flat;
+                    b.FlatAppearance.BorderSize = 1;
+                    b.TabStop = false;
                     this.form1.Controls.Add(b);
                     rightMap[i, j] = b;
                 }
@@ -369,7 +374,7 @@ namespace Shapes
                 for (int j = 0; j < 10; j++)
                 {
                     //if (ComputerPlayer.OwnMap[i, j] == 1)
-                        //leftMap[i, j].BackColor = playerShipColor;
+                    //leftMap[i, j].BackColor = playerShipColor;
                 }
 
             UnlockMap(rightMap);
@@ -647,10 +652,12 @@ namespace Shapes
             int x = 0, y = 0;
             GetCoordinates(ref x, ref y, b, leftMap);
 
-            UpdateGhostBorder(leftMap, UserPlayer.lastMove, new Point(x, y));
+            
 
             if (leftMap[x, y].Text != "")
                 return;
+
+            UpdateGhostBorder(leftMap, UserPlayer.lastMove, new Point(x, y));
 
             if (ComputerPlayer.OwnMap[x, y] == 1)
             {
@@ -677,7 +684,7 @@ namespace Shapes
 
             }
 
-            
+
 
             UserPlayer.availableBoxes.Remove(new Point(x, y));
             UserPlayer.lastMove = new Point(x, y);
@@ -694,15 +701,17 @@ namespace Shapes
 
         private void UpdateGhostBorder(Button[,] map, Point? lastMove, Point point)
         {
-            map[point.X, point.Y].FlatAppearance.BorderColor = borderColor;
-
+            map[point.X, point.Y].FlatAppearance.BorderColor = borderLastMoveColor;
+            map[point.X, point.Y].FlatAppearance.BorderSize = (Move is ComputerPlayer) ? 3 : 2;
 
             if (lastMove != null)
             {
                 Point last = (Point)lastMove;
-                map[last.X, last.Y].FlatAppearance.BorderColor = emptyColor;
+                map[last.X, last.Y].FlatAppearance.BorderColor = borderNormalColor;
+                map[last.X, last.Y].FlatAppearance.BorderSize = 1;
                 //map[last.X, last.Y].PerformClick();
             }
+
         }
 
         private bool IsSunken(int x, int y, int[,] ownMap)
@@ -725,14 +734,28 @@ namespace Shapes
             form1.Controls["panel1"].Visible = true;
             form1.Controls["panel2"].Visible = false;
             ClearPanels12();
+            ClearGhosts();
 
             InitGame();
         }
 
+        private void ClearGhosts()
+        {
+            for(int i=0; i<10; i++)
+                for(int j=0; j<10; j++)
+                {
+                    leftMap[i, j].FlatAppearance.BorderColor = borderNormalColor;
+                    leftMap[i, j].FlatAppearance.BorderSize = 1;
+                    rightMap[i, j].FlatAppearance.BorderColor = borderNormalColor;
+                    rightMap[i, j].FlatAppearance.BorderSize = 1;
+                }
+
+        }
+
         private void ClearPanels12()
         {
-            form1.Controls["panel2"].Controls["luhit"].Text =  "0/20";
-            form1.Controls["panel2"].Controls["lchit"].Text =  "0/20";
+            form1.Controls["panel2"].Controls["luhit"].Text = "0/20";
+            form1.Controls["panel2"].Controls["lchit"].Text = "0/20";
 
             UserPlayer.ClearFleet();
             UpdateLabels();

@@ -34,6 +34,7 @@ namespace Shapes
 
         public void ButtonLefttMap_Click(object sender, EventArgs e)
         {
+            label6.Focus();
             game.ButtonLeftMapClicked((Button)sender);
 
         }
