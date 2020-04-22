@@ -4,6 +4,8 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Media;
+using System.Threading;
 
 namespace Shapes
 {
@@ -33,11 +35,16 @@ namespace Shapes
         public List<Point> huntCandidates;
         public List<Point> availableBoxes;
 
+        System.Windows.Media.MediaPlayer mediaPlayer;
+        List <Thread> thList;
+
         public Player()
         {
             lastMove = null;
             availableBoxes = new List<Point>();
             huntCandidates = new List<Point>();
+            mediaPlayer = new System.Windows.Media.MediaPlayer();
+            thList = new List<Thread>();
         }
 
         public abstract void CreateShapes();
@@ -58,6 +65,23 @@ namespace Shapes
             hitCounter = 0;
             missCounter = 0;
             lastMove = null;
+        }
+
+        public void PlaySound(status pstatus)
+        {
+            //Thread th = new Thread(() => PlaySongInNewThread(pstatus));
+            //th.Name = ((this is UserPlayer) ? "UserPlayerMove" : "ComputerPlayerMove") + moveCounter;
+            //if(this is UserPlayer)
+            //th.Start();
+            string path = (pstatus == status.Hitted || pstatus == status.HittedAndSunked) ? @"C:\Users\Slightom\Documents\Visual Studio 2017\Projects\Shapes\Shapes\Resources\bomb1.wav" : @"C:\Users\Slightom\Documents\Visual Studio 2017\Projects\Shapes\Shapes\Resources\miss1.wav";
+            mediaPlayer.Open(new Uri(path));
+            mediaPlayer.Play();
+        }
+
+        private void PlaySongInNewThread(status pstatus)
+        {
+           // soundPlayer.Stream = (pstatus == status.Hitted || pstatus == status.HittedAndSunked) ? Ships.Properties.Resources.bomb1 : Ships.Properties.Resources.miss1;
+           // soundPlayer.Play();
         }
     }
 
@@ -287,6 +311,8 @@ namespace Shapes
         public static Color borderLastMoveColor = Color.Blue;
         public static Color borderNormalColor = Color.Black;
 
+        SoundPlayer SoundPlayer;
+
 
         public Game()
         {
@@ -347,6 +373,8 @@ namespace Shapes
                     this.form1.Controls.Add(b);
                     rightMap[i, j] = b;
                 }
+
+            SoundPlayer = new SoundPlayer();
         }
 
         internal void InitGame()
@@ -659,15 +687,17 @@ namespace Shapes
 
             UpdateGhostBorder(leftMap, UserPlayer.lastMove, new Point(x, y));
 
+
             if (ComputerPlayer.OwnMap[x, y] == 1)
             {
                 leftMap[x, y].Text = hittedSign;
                 UserPlayer.hitCounter++;
 
+                UserPlayer.status = status.Hitted;
                 if (IsSunken(x, y, ComputerPlayer.OwnMap))
                 {
-                    ColorShip(hittedSunkenColor, leftMap);
-                    ClearShip();
+                    UserPlayer.status = status.HittedAndSunked;
+                    ColorShip(hittedSunkenColor, leftMap);                   
                 }
 
                 if (UserPlayer.hitCounter >= 20)
@@ -676,15 +706,18 @@ namespace Shapes
                     GameOver();
                     return;
                 }
+                
             }
             else
             {
+                UserPlayer.status = status.Missed;
                 leftMap[x, y].Text = missedSign;
-                UserPlayer.missCounter++;
+                UserPlayer.missCounter++;                
 
             }
 
-
+            leftMap[x, y].Refresh();
+            RefreshLeftButtons(x, y, UserPlayer.lastMove);
 
             UserPlayer.availableBoxes.Remove(new Point(x, y));
             UserPlayer.lastMove = new Point(x, y);
@@ -693,10 +726,27 @@ namespace Shapes
 
             UpdateUserScore();
 
-
+            UserPlayer.PlaySound(UserPlayer.status);
 
             Move = ComputerPlayer;
+            ClearShip();
             ComputerMove();
+        }
+
+        private void RefreshLeftButtons(int x, int y, Point? lastMove)
+        {
+            if (lastMove != null)
+                leftMap[lastMove.Value.X, lastMove.Value.Y].Refresh();
+
+            if(Ship.Count() > 0)
+            {
+                foreach (var s in Ship)
+                    leftMap[s.X, s.Y].Refresh();
+            }
+            else
+            {
+                leftMap[x, y].Refresh();
+            }
         }
 
         private void UpdateGhostBorder(Button[,] map, Point? lastMove, Point point)
@@ -763,7 +813,8 @@ namespace Shapes
         }
 
         private void ComputerMove()
-        {
+        {           
+            Thread.Sleep(1000);
             if (ComputerPlayer.lastMove is null || ComputerPlayer.status == status.Missed || ComputerPlayer.status == status.HittedAndSunked)
             {
                 choice = ComputerPlayer.random.Next(0, ComputerPlayer.availableBoxes.Count());
@@ -777,10 +828,10 @@ namespace Shapes
 
             Point tmp = new Point(choosenBox.X, choosenBox.Y);
 
-            UpdateGhostBorder(rightMap, ComputerPlayer.lastMove, tmp);
+                    
 
             if (UserPlayer.OwnMap[choosenBox.X, choosenBox.Y] == 1)
-            {
+            {               
                 rightMap[choosenBox.X, choosenBox.Y].Text = hittedSign;
                 ++ComputerPlayer.hitCounter;
                 ComputerPlayer.availableBoxes.Remove(choosenBox);
@@ -788,7 +839,7 @@ namespace Shapes
                 UpdateComputerHuntCandidates(tmp.X, tmp.Y);
                 ComputerPlayer.huntCandidates.Remove(new Point(tmp.X, tmp.Y));
                 ComputerPlayer.status = IsSunked() ? status.HittedAndSunked : status.Hitted;
-
+                ComputerPlayer.PlaySound(ComputerPlayer.status);
 
                 if (ComputerPlayer.status == status.HittedAndSunked)
                 {
@@ -823,13 +874,16 @@ namespace Shapes
                 {
                     ComputerPlayer.status = status.Missed;
                 }
+                ComputerPlayer.PlaySound(ComputerPlayer.status);
             }
 
+            UpdateGhostBorder(rightMap, ComputerPlayer.lastMove, tmp);
             ComputerPlayer.lastMove = new Point(tmp.X, tmp.Y);
             ComputerPlayer.moveCounter++;
 
             UpdateComputerScore();
             UserMove();
+            
         }
 
         private void ClearShip()
