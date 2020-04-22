@@ -72,6 +72,15 @@ namespace Ships.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.IO.UnmanagedMemoryStream similar to System.IO.MemoryStream.
         /// </summary>
+        public static System.IO.UnmanagedMemoryStream main1 {
+            get {
+                return ResourceManager.GetStream("main1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.IO.UnmanagedMemoryStream similar to System.IO.MemoryStream.
+        /// </summary>
         public static System.IO.UnmanagedMemoryStream miss1 {
             get {
                 return ResourceManager.GetStream("miss1", resourceCulture);

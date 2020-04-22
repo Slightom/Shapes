@@ -36,7 +36,6 @@ namespace Shapes
         public List<Point> availableBoxes;
 
         System.Windows.Media.MediaPlayer mediaPlayer;
-        List <Thread> thList;
 
         public Player()
         {
@@ -44,7 +43,6 @@ namespace Shapes
             availableBoxes = new List<Point>();
             huntCandidates = new List<Point>();
             mediaPlayer = new System.Windows.Media.MediaPlayer();
-            thList = new List<Thread>();
         }
 
         public abstract void CreateShapes();
@@ -312,7 +310,8 @@ namespace Shapes
         public static Color borderNormalColor = Color.Black;
 
         SoundPlayer SoundPlayer;
-
+        System.Windows.Media.MediaPlayer mediaPlayer;
+        Thread mainMusic;
 
         public Game()
         {
@@ -334,6 +333,13 @@ namespace Shapes
 
             UserPlayer = new UserPlayer();
             ComputerPlayer = new ComputerPlayer();
+
+            //mediaPlayer = new System.Windows.Media.MediaPlayer();
+            //string path = @"C:\Users\Slightom\Documents\Visual Studio 2017\Projects\Shapes\Shapes\Resources\main1.wav";
+            //mediaPlayer.Open(new Uri(path));
+            SoundPlayer = new SoundPlayer(Ships.Properties.Resources.main1);
+            mainMusic = new Thread(() => PlayMainMusic(SoundPlayer));
+            
 
             Button b;
             leftMap = new Button[10, 10];
@@ -374,7 +380,12 @@ namespace Shapes
                     rightMap[i, j] = b;
                 }
 
-            SoundPlayer = new SoundPlayer();
+            mainMusic.Start();
+        }
+
+        private void PlayMainMusic(SoundPlayer soundPlayer)
+        {
+            soundPlayer.PlayLooping();
         }
 
         internal void InitGame()
@@ -718,13 +729,14 @@ namespace Shapes
 
             leftMap[x, y].Refresh();
             RefreshLeftButtons(x, y, UserPlayer.lastMove);
+            UpdateUserScore();
 
             UserPlayer.availableBoxes.Remove(new Point(x, y));
             UserPlayer.lastMove = new Point(x, y);
             //LockLeftMap();
             UserPlayer.moveCounter++;
 
-            UpdateUserScore();
+            
 
             UserPlayer.PlaySound(UserPlayer.status);
 
@@ -777,6 +789,7 @@ namespace Shapes
         private void UpdateUserScore()
         {
             form1.Controls["panel2"].Controls["luhit"].Text = UserPlayer.hitCounter + "/20";
+            form1.Controls["panel2"].Controls["luhit"].Refresh();
         }
 
         private void NewGame()
@@ -904,6 +917,16 @@ namespace Shapes
         {
             string msg = "";
             string title = "";
+
+            if(Move is ComputerPlayer)
+            {
+                for(int i=0; i<10; i++)
+                    for(int j=0; j<10; j++)
+                    {
+                        if (ComputerPlayer.OwnMap[i, j] == 1 && leftMap[i, j].BackColor == emptyColor)
+                            leftMap[i, j].BackColor = playerShipColor;
+                    }
+            }
 
             if (ComputerPlayer.hitCounter >= 20)
             {
